@@ -1,0 +1,20 @@
+{
+  "name": "unigame.upm.localpackages",
+  "author": "UniGame",
+  "displayName": "UniGame Local UPM Packages",
+  "description": "Allow to use local packages in Unity UPM",
+  "unity": "2023.1",
+  "version": "2025.0.0",
+  "homepage": "https://github.com/UnioGame/UniGame.GameDB/blob/main/README.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UnioGame/unigame.upm.localpackages.git"
+  },
+  "keywords": [
+    "upm",
+    "packages"
+  ],
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
+}
