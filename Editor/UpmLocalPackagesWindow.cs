@@ -14,6 +14,8 @@ using UnityEngine.UIElements;
 using Newtonsoft.Json.Linq;
 using UnityEditor.UIElements;
 
+// ReSharper disable InconsistentNaming
+
 public class UpmLocalPackagesWindow : EditorWindow
 {
     [MenuItem("UniGame/Tools/UPM Local Packages")]
@@ -27,12 +29,15 @@ public class UpmLocalPackagesWindow : EditorWindow
 
     // ===== Persistent state =====
     [Serializable]
+    [FilePath("ProjectSettings/UPMLocalPackagesState.json", FilePathAttribute.Location.ProjectFolder)]
     class State : ScriptableSingleton<State>
     {
         // Пути корней для сканирования: храним ОТНОСИТЕЛЬНО корня проекта (как и раньше)
         public List<string> searchRoots = new List<string>();
         public bool showOnlyNotInstalled = false;
+
         public string lastSearchSummary = "";
+
         // Выбор пакетов для батч-установки: храним ОТНОСИТЕЛЬНО Packages (именно такая строка попадет в file:)
         public List<string> selectedPackageRelFromPackages = new List<string>();
 
@@ -41,11 +46,12 @@ public class UpmLocalPackagesWindow : EditorWindow
     }
 
     // ===== Data model =====
+    [Serializable]
     class PackageRow
     {
-        public string PathAbs;                 // абсолютный путь к папке пакета
-        public string PathRelProj;             // относительный от корня проекта (для UI)
-        public string PathRelForManifest;      // относительный от Packages/ (для manifest.json → file:...)
+        public string PathAbs; // абсолютный путь к папке пакета
+        public string PathRelProj; // относительный от корня проекта (для UI)
+        public string PathRelForManifest; // относительный от Packages/ (для manifest.json → file:...)
         public string Name;
         public string DisplayName;
         public string Version;
@@ -53,8 +59,8 @@ public class UpmLocalPackagesWindow : EditorWindow
         public List<string> Keywords;
         public bool Installed;
         public string InstalledVersion;
-        public string ManifestValue;           // e.g. "file:../game.packages/xxx" или "1.2.3" или git url
-        public bool InstalledFromLocal;        // ManifestValue starts with "file:"
+        public string ManifestValue; // e.g. "file:../game.packages/xxx" или "1.2.3" или git url
+        public bool InstalledFromLocal; // ManifestValue starts with "file:"
     }
 
     // UI refs
@@ -105,7 +111,9 @@ public class UpmLocalPackagesWindow : EditorWindow
         var target = Path.GetFullPath(targetAbs);
         try
         {
-            var relUri = new Uri(baseDir.EndsWith(Path.DirectorySeparatorChar.ToString()) ? baseDir : baseDir + Path.DirectorySeparatorChar)
+            var relUri = new Uri(baseDir.EndsWith(Path.DirectorySeparatorChar.ToString())
+                    ? baseDir
+                    : baseDir + Path.DirectorySeparatorChar)
                 .MakeRelativeUri(new Uri(target));
             return Uri.UnescapeDataString(relUri.ToString()).Replace('\\', '/');
         }
@@ -113,7 +121,8 @@ public class UpmLocalPackagesWindow : EditorWindow
         {
             // fallback
             if (target.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase))
-                return target.Substring(baseDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace('\\', '/');
+                return target.Substring(baseDir.Length)
+                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace('\\', '/');
             return target.Replace('\\', '/');
         }
     }
@@ -122,7 +131,13 @@ public class UpmLocalPackagesWindow : EditorWindow
 
     static string ToPackagesRelative(string absPath) => ToRelativeFrom(PackagesRoot, absPath);
 
-    void CreateGUI()
+    void OnDisable()
+    {
+        // на всякий случай фиксируем все последние изменения
+        State.instance.SaveNow();
+    }
+
+    private void CreateGUI()
     {
         var root = rootVisualElement;
         root.style.paddingLeft = 8;
@@ -131,7 +146,8 @@ public class UpmLocalPackagesWindow : EditorWindow
         root.style.paddingBottom = 8;
 
         // ----- Top bar -----
-        var topBar = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginBottom = 6 } };
+        var topBar = new VisualElement
+            { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, marginBottom = 6 } };
         root.Add(topBar);
 
         _scanBtn = new Button(ScanAndRefresh) { text = "Scan" };
@@ -191,13 +207,27 @@ public class UpmLocalPackagesWindow : EditorWindow
 
         _tabDetails.RegisterValueChangedCallback(evt =>
         {
-            if (evt.newValue) { _tabSettings.SetValueWithoutNotify(false); ShowPanel(_panelDetails); }
-            else if (!_tabSettings.value) { _tabDetails.SetValueWithoutNotify(true); }
+            if (evt.newValue)
+            {
+                _tabSettings.SetValueWithoutNotify(false);
+                ShowPanel(_panelDetails);
+            }
+            else if (!_tabSettings.value)
+            {
+                _tabDetails.SetValueWithoutNotify(true);
+            }
         });
         _tabSettings.RegisterValueChangedCallback(evt =>
         {
-            if (evt.newValue) { _tabDetails.SetValueWithoutNotify(false); ShowPanel(_panelSettings); }
-            else if (!_tabDetails.value) { _tabSettings.SetValueWithoutNotify(true); }
+            if (evt.newValue)
+            {
+                _tabDetails.SetValueWithoutNotify(false);
+                ShowPanel(_panelSettings);
+            }
+            else if (!_tabDetails.value)
+            {
+                _tabSettings.SetValueWithoutNotify(true);
+            }
         });
 
         tabsBar.Add(_tabDetails);
@@ -242,10 +272,8 @@ public class UpmLocalPackagesWindow : EditorWindow
         pathsTitle.style.marginBottom = 4;
         _panelSettings.Add(pathsTitle);
 
-        _pathsList = new ListView(State.instance.searchRoots, itemHeight: 20, makeItem: () => new Label(), bindItem: (ve, i) =>
-        {
-            (ve as Label).text = State.instance.searchRoots[i];
-        })
+        _pathsList = new ListView(State.instance.searchRoots, itemHeight: 20, makeItem: () => new Label(),
+            bindItem: (ve, i) => { (ve as Label).text = State.instance.searchRoots[i]; })
         {
             selectionType = SelectionType.Single,
             showBorder = true
@@ -307,7 +335,10 @@ public class UpmLocalPackagesWindow : EditorWindow
     // ----- Packages list row -----
     VisualElement MakePackageRow()
     {
-        var row = new VisualElement { style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, paddingLeft = 6, paddingRight = 6 } };
+        var row = new VisualElement
+        {
+            style = { flexDirection = FlexDirection.Row, alignItems = Align.Center, paddingLeft = 6, paddingRight = 6 }
+        };
 
         var toggle = new Toggle { name = "sel" };
         toggle.style.width = 20;
@@ -372,6 +403,7 @@ public class UpmLocalPackagesWindow : EditorWindow
                 {
                     State.instance.selectedPackageRelFromPackages.Remove(p.PathRelForManifest);
                 }
+
                 State.instance.SaveNow();
             };
             toggle.RegisterValueChangedCallback(cb);
@@ -418,11 +450,13 @@ public class UpmLocalPackagesWindow : EditorWindow
         if (!string.IsNullOrEmpty(sel.DisplayName)) sb.AppendLine($"DisplayName: {sel.DisplayName}");
         sb.AppendLine($"Version:     {sel.Version}");
         if (!string.IsNullOrEmpty(sel.Description)) sb.AppendLine($"Description: {sel.Description}");
-        if (sel.Keywords != null && sel.Keywords.Count > 0) sb.AppendLine($"Tags:        {string.Join(", ", sel.Keywords)}");
+        if (sel.Keywords != null && sel.Keywords.Count > 0)
+            sb.AppendLine($"Tags:        {string.Join(", ", sel.Keywords)}");
         sb.AppendLine($"Path (abs):  {sel.PathAbs}");
         sb.AppendLine($"Path (proj): {sel.PathRelProj}");
         sb.AppendLine($"Path (for manifest): {sel.PathRelForManifest}");
-        sb.AppendLine($"Installed:   {(sel.Installed ? $"Yes ({(sel.InstalledFromLocal ? "local" : "registry")}: {(!string.IsNullOrEmpty(sel.InstalledVersion) ? sel.InstalledVersion : sel.ManifestValue)})" : "No")}");
+        sb.AppendLine(
+            $"Installed:   {(sel.Installed ? $"Yes ({(sel.InstalledFromLocal ? "local" : "registry")}: {(!string.IsNullOrEmpty(sel.InstalledVersion) ? sel.InstalledVersion : sel.ManifestValue)})" : "No")}");
         if (!string.IsNullOrEmpty(sel.ManifestValue)) sb.AppendLine($"Manifest:    {sel.ManifestValue}");
         _detailsField.value = sb.ToString();
 
@@ -441,13 +475,13 @@ public class UpmLocalPackagesWindow : EditorWindow
             return;
         }
 
-        #if UNITY_EDITOR_WIN
+#if UNITY_EDITOR_WIN
         System.Diagnostics.Process.Start("explorer.exe", $"\"{pathAbs}\"");
-        #elif UNITY_EDITOR_OSX
+#elif UNITY_EDITOR_OSX
         System.Diagnostics.Process.Start("open", $"\"{pathAbs}\"");
-        #else
+#else
         EditorUtility.RevealInFinder(pathAbs);
-        #endif
+#endif
     }
 
     void InstallSelectedSingle()
@@ -459,6 +493,7 @@ public class UpmLocalPackagesWindow : EditorWindow
             EditorUtility.DisplayDialog("Install", "Package is already installed.", "OK");
             return;
         }
+
         if (string.IsNullOrEmpty(p.PathRelForManifest) || !Directory.Exists(p.PathAbs))
         {
             EditorUtility.DisplayDialog("Install", "Package folder not found.", "OK");
@@ -468,7 +503,7 @@ public class UpmLocalPackagesWindow : EditorWindow
         var uri = $"file:{p.PathRelForManifest}"; // ОТНОСИТЕЛЬНО Packages/
 
         if (!EditorUtility.DisplayDialog("Install package",
-            $"Add local package '{p.Name}'?\n{uri}", "Add", "Cancel"))
+                $"Add local package '{p.Name}'?\n{uri}", "Add", "Cancel"))
             return;
 
         var req = Client.Add(uri);
@@ -486,12 +521,13 @@ public class UpmLocalPackagesWindow : EditorWindow
 
         if (!p.Installed || !p.InstalledFromLocal)
         {
-            EditorUtility.DisplayDialog("Uninstall", "Only locally installed (file:) packages can be uninstalled here.", "OK");
+            EditorUtility.DisplayDialog("Uninstall", "Only locally installed (file:) packages can be uninstalled here.",
+                "OK");
             return;
         }
 
         if (!EditorUtility.DisplayDialog("Uninstall package",
-            $"Remove local package '{p.Name}' from manifest?", "Remove", "Cancel"))
+                $"Remove local package '{p.Name}' from manifest?", "Remove", "Cancel"))
             return;
 
         var req = Client.Remove(p.Name);
@@ -519,7 +555,8 @@ public class UpmLocalPackagesWindow : EditorWindow
 
             foreach (var rootAbs in rootsAbs)
             {
-                foreach (var packageJsonPath in Directory.EnumerateFiles(rootAbs, "package.json", SearchOption.AllDirectories))
+                foreach (var packageJsonPath in Directory.EnumerateFiles(rootAbs, "package.json",
+                             SearchOption.AllDirectories))
                 {
                     var norm = packageJsonPath.Replace('\\', '/');
                     if (norm.Contains("/node_modules/")) continue;
@@ -551,7 +588,8 @@ public class UpmLocalPackagesWindow : EditorWindow
                             row.Installed = true;
                             row.ManifestValue = manifestValue;
                             row.InstalledFromLocal = !string.IsNullOrEmpty(manifestValue) &&
-                                                     manifestValue.StartsWith("file:", StringComparison.OrdinalIgnoreCase);
+                                                     manifestValue.StartsWith("file:",
+                                                         StringComparison.OrdinalIgnoreCase);
                             if (!row.InstalledFromLocal)
                                 row.InstalledVersion = manifestValue;
                         }
