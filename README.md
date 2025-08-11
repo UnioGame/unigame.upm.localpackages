@@ -24,12 +24,18 @@ It allows you to scan, install, and uninstall local packages directly from the U
   - Relative path for `manifest.json` (relative to the `Packages/` folder)
 - **Filtering** — show only not-installed packages.
 - **Batch install** selected packages.
+- **Auto install git dependencies of target package** like:
+
+```json
+"com.unigame.unicore": "https://github.com/UnioGame/unigame.core.git",
+```
+
 - **Install/Uninstall** package directly from details view.
 - **Open package folder** in file explorer.
 - **Settings**:
   - List of folders to scan (relative to project root).
   - Add/remove scan paths directly from the tool.
-  - Auto install git dependencies of target package
+
 
 ## Differences from Unity's built-in Package Manager
 
