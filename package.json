@@ -4,7 +4,7 @@
   "displayName": "UniGame Local UPM Packages",
   "description": "Allow to use local packages in Unity UPM",
   "unity": "2023.1",
-  "version": "2025.0.0",
+  "version": "2025.0.1",
   "homepage": "https://github.com/UnioGame/UniGame.GameDB/blob/main/README.md",
   "repository": {
     "type": "git",

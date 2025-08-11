@@ -29,6 +29,7 @@ It allows you to scan, install, and uninstall local packages directly from the U
 - **Settings**:
   - List of folders to scan (relative to project root).
   - Add/remove scan paths directly from the tool.
+  - Auto install git dependencies of target package
 
 ## Differences from Unity's built-in Package Manager
 
